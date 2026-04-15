@@ -11,33 +11,7 @@ import requests
 # 1. KONFIGURASI HALAMAN
 st.set_page_config(page_title="PUO Geomatics Pro", layout="wide")
 
-# 2. SISTEM LOGIN
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-def login_interface():
-    _, col2, _ = st.columns([1, 2, 1])
-    with col2:
-        st.write("<br><br>", unsafe_allow_html=True)
-        if os.path.exists("LOGO PUO.png"):
-            st.image("LOGO PUO.png", use_container_width=True)
-        st.markdown("<h2 style='text-align: center;'>Sistem Geomatik PUO Pro</h2>", unsafe_allow_html=True)
-        
-        with st.container(border=True):
-            u_id = st.text_input("ID Pengguna", placeholder="01DGU24F1059")
-            u_pw = st.text_input("Kata Laluan", type="password")
-            if st.button("Log Masuk Sekarang", use_container_width=True, type="primary"):
-                if u_id in ["1", "2", "3", "01DGU24F1059", "01DGU24F1061"] and u_pw == "ADMIN1234":
-                    st.session_state["logged_in"] = True
-                    st.rerun()
-                else:
-                    st.error("ID atau Kata Laluan Salah!")
-
-if not st.session_state["logged_in"]:
-    login_interface()
-    st.stop()
-
-# 3. FUNGSI TEKNIKAL
+# 2. FUNGSI TEKNIKAL
 @st.cache_resource
 def get_transformer():
     return Transformer.from_crs("epsg:3384", "epsg:4326", always_xy=True)
@@ -81,7 +55,7 @@ def export_to_dxf(df):
     out_stream.close()
     return dxf_string.encode('utf-8')
 
-# 4. SIDEBAR
+# 3. SIDEBAR
 if os.path.exists("LOGO PUO.png"):
     st.sidebar.image("LOGO PUO.png", use_container_width=True)
 else:
@@ -91,7 +65,7 @@ st.sidebar.markdown("---")
 st.sidebar.title("Portal Geomatik")
 file_choice = st.sidebar.radio("Pilih Data Fail:", ["Batu Sempadan (BKL)", "Control Station (CRM)"])
 
-# 5. LOADING DATA
+# 4. LOADING DATA
 filename = "BKL_PROGRAMMING.csv" if "BKL" in file_choice else "CRM_PROGRAMMING.csv"
 stn_col = "BKL" if "BKL" in file_choice else "CRM"
 
@@ -130,11 +104,7 @@ if os.path.exists(filename):
     st.sidebar.markdown("---")
     st.sidebar.info("💻 **Developed by:**\n\n**PATTAYA SYNDICATE**")
 
-    if st.sidebar.button("🚪 Log Keluar"):
-        st.session_state["logged_in"] = False
-        st.rerun()
-
-    # 6. PAPARAN UTAMA
+    # 5. PAPARAN UTAMA
     st.subheader(f"📍 Perak Grid (3384) | Surveyor: Farizul, Iman Hakimi, Ajmal")
     st.markdown("<p style='margin-top:-15px; color: grey; font-style: italic;'>System Powered by PATTAYA SYNDICATE</p>", unsafe_allow_html=True)
     
@@ -149,14 +119,12 @@ if os.path.exists(filename):
 
     m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_val, tiles=tiles, attr=' ', control_scale=False)
 
-    # --- LUKIS TITIK DAHULU (SUPAYA DI BAWAH LABEL) ---
     for _, row in df_map.iterrows():
         stn_no = int(row['STN'])
         is_target = (search_stn != "-- Pilih Stesen --" and str(stn_no) == search_stn)
         dot_color = "yellow" if is_target else "red"
         
-        # Format URL Google Maps yang ringkas
-        gmaps_url = f"https://www.google.com/maps?q={row['lat']},{row['lon']}"
+        gmaps_url = f"http://www.google.com/maps/place/{row['lat']},{row['lon']}"
         
         popup_html = f"""
         <div style="font-family: Arial; font-size: 10pt; min-width: 140px;">
@@ -182,7 +150,6 @@ if os.path.exists(filename):
             tooltip=f"Klik untuk info Stesen {stn_no}"
         ).add_to(m)
 
-        # Lukis Label (Hanya jika ON)
         if show_labels:
             label_color = "cyan" if is_target else "yellow"
             folium.Marker(
@@ -190,11 +157,9 @@ if os.path.exists(filename):
                 icon=folium.DivIcon(html=f'<div style="font-size: 10pt; color: {label_color}; font-weight: bold; text-shadow: 2px 2px 4px black; width: 40px; pointer-events: none;">{stn_no}</div>')
             ).add_to(m)
 
-    # Key Peta yang dinamik untuk paksa refresh bila carian berubah
     map_key = f"map_{file_choice}_{search_stn}_{map_style}"
     st_folium(m, width="100%", height=500, key=map_key)
 
-    # 📊 JADUAL & LUAS
     st.write("---")
     st.markdown("### 📊 Jadual Koordinat Stesen")
     st.dataframe(df_map[['STN', 'E', 'N']].rename(columns={'STN': 'No. Stesen', 'E': 'Easting (m)', 'N': 'Northing (m)'}), use_container_width=True, hide_index=True)
@@ -208,7 +173,6 @@ if os.path.exists(filename):
         st.success(f"Luas Keseluruhan: **{area_m2:.2f} m²** | **{area_m2/10000:.3f} Hektar**")
 
 else:
-    st.sidebar.button("🚪 Log Keluar")
-    st.error(f"Fail {filename} tidak dijumpai.")
+    st.error(f"Fail {filename} tidak dijumpai. Sila pastikan fail CSV berada dalam folder yang sama.")
 
 st.markdown("<br><hr><center><small>PUO Geomatics Pro | Developed by PATTAYA SYNDICATE</small></center>", unsafe_allow_html=True)
